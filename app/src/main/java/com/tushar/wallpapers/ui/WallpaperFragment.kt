@@ -1,6 +1,5 @@
 package com.tushar.wallpapers.ui
 
-import CategoryAdapter
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -15,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import com.tushar.wallpapers.adapter.CategoryAdapter
 
 import com.tushar.wallpapers.adapter.PhotoAdapter
 import com.tushar.wallpapers.databinding.FragmentWallpaperBinding
@@ -22,10 +22,10 @@ import com.tushar.wallpapers.databinding.FragmentWallpaperBinding
 import com.tushar.wallpapers.viewmodel.WallpaperViewModel
 
 class WallpaperFragment : Fragment() {
-
     private lateinit var binding: FragmentWallpaperBinding
     private lateinit var viewModel: WallpaperViewModel
     private lateinit var categoryAdapter: CategoryAdapter
+    private lateinit var photoAdapter: PhotoAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -33,36 +33,65 @@ class WallpaperFragment : Fragment() {
     ): View {
         binding = FragmentWallpaperBinding.inflate(inflater, container, false)
         viewModel = ViewModelProvider(this)[WallpaperViewModel::class.java]
-
-        setupCategoryRecyclerView()
-        observeCategoryList()
-        observeWallpaperList()
-
         return binding.root
     }
 
-    private fun setupCategoryRecyclerView() {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        setupAdapters()
+        setupRecyclerViews()
+        setupObservers()
+
+        viewModel.loadCategories()
+        viewModel.fetchWallpapers("Nature") // Default category
+    }
+
+    private fun setupAdapters() {
         categoryAdapter = CategoryAdapter { category ->
             viewModel.fetchWallpapers(category.name)
         }
-        binding.categoryRecyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-        binding.categoryRecyclerView.adapter = categoryAdapter
-    }
 
-    private fun observeCategoryList() {
-        viewModel.categories.observe(viewLifecycleOwner) {
-            categoryAdapter.submitList(it)
+        photoAdapter = PhotoAdapter { clickedPhoto ->
+            showWallpaperOptions(clickedPhoto.src.portrait)
         }
     }
 
-    private fun observeWallpaperList() {
-        viewModel.wallpapers.observe(viewLifecycleOwner) { photoList ->
-            val photoAdapter = PhotoAdapter(photoList) { clickedPhoto ->
-                showWallpaperOptions(clickedPhoto.src.portrait)
-            }
+    private fun setupRecyclerViews() {
+        // Category RecyclerView (horizontal)
+        binding.categoryRecyclerView.apply {
+            layoutManager = LinearLayoutManager(
+                requireContext(),
+                LinearLayoutManager.HORIZONTAL,
+                false
+            )
+            adapter = categoryAdapter
+        }
 
-            binding.categoryRecyclerView.layoutManager = GridLayoutManager(requireContext(), 2)
-            binding.categoryRecyclerView.adapter = photoAdapter
+        // Wallpaper RecyclerView (grid)
+        binding.categoryRecyclerView.apply {
+            layoutManager = GridLayoutManager(requireContext(), 2)
+            adapter = photoAdapter
+        }
+    }
+
+    private fun setupObservers() {
+        viewModel.categories.observe(viewLifecycleOwner) { categories ->
+            categoryAdapter.submitList(categories)
+        }
+
+        viewModel.wallpapers.observe(viewLifecycleOwner) { wallpapers ->
+            photoAdapter.submitList(wallpapers)
+        }
+
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+
+        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
+            if (!message.isNullOrEmpty()) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

@@ -1,30 +1,57 @@
+package com.tushar.wallpapers.adapter
+
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.tushar.wallpapers.databinding.ItemCategoryBinding
+import com.bumptech.glide.Glide
+import com.tushar.wallpapers.R
 import com.tushar.wallpapers.model.Category
 
 class CategoryAdapter(
     private val onItemClick: (Category) -> Unit
-) : ListAdapter<Category, CategoryAdapter.CategoryViewHolder>(DiffCallback()) {
+) : ListAdapter<Category, CategoryAdapter.CategoryViewHolder>(CategoryDiffCallback()) {
 
-    class CategoryViewHolder(val binding: ItemCategoryBinding) : RecyclerView.ViewHolder(binding.root)
+    inner class CategoryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val imageView: ImageView = itemView.findViewById(R.id.categoryImage)
+        private val textView: TextView = itemView.findViewById(R.id.categoryName)
+
+        fun bind(category: Category) {
+            Glide.with(itemView.context)
+                .load(category.imageUrl)
+                .placeholder(R.drawable.placeholder)
+                .centerCrop()
+                .into(imageView)
+
+            textView.text = category.name
+
+            itemView.setOnClickListener {
+                onItemClick(category)
+            }
+        }
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CategoryViewHolder {
-        val binding = ItemCategoryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return CategoryViewHolder(binding)
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_category, parent, false)
+        return CategoryViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: CategoryViewHolder, position: Int) {
-        val category = getItem(position)
-        holder.binding.categoryName.text = category.name
-        holder.itemView.setOnClickListener { onItemClick(category) }
+        holder.bind(getItem(position))
     }
 
-    class DiffCallback : DiffUtil.ItemCallback<Category>() {
-        override fun areItemsTheSame(oldItem: Category, newItem: Category) = oldItem.name == newItem.name
-        override fun areContentsTheSame(oldItem: Category, newItem: Category) = oldItem == newItem
+    private class CategoryDiffCallback : DiffUtil.ItemCallback<Category>() {
+        override fun areItemsTheSame(oldItem: Category, newItem: Category): Boolean {
+            return oldItem.name == newItem.name
+        }
+
+        override fun areContentsTheSame(oldItem: Category, newItem: Category): Boolean {
+            return oldItem == newItem
+        }
     }
 }
