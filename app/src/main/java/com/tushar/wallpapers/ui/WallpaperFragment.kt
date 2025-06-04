@@ -18,6 +18,7 @@ import com.tushar.wallpapers.adapter.CategoryAdapter
 
 import com.tushar.wallpapers.adapter.PhotoAdapter
 import com.tushar.wallpapers.databinding.FragmentWallpaperBinding
+import com.tushar.wallpapers.model.Photo
 
 import com.tushar.wallpapers.viewmodel.WallpaperViewModel
 
@@ -26,6 +27,9 @@ class WallpaperFragment : Fragment() {
     private lateinit var viewModel: WallpaperViewModel
     private lateinit var categoryAdapter: CategoryAdapter
     private lateinit var photoAdapter: PhotoAdapter
+
+
+    private val favoriteList = mutableListOf<Photo>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -52,9 +56,17 @@ class WallpaperFragment : Fragment() {
             viewModel.fetchWallpapers(category.name)
         }
 
-        photoAdapter = PhotoAdapter { clickedPhoto ->
-            showWallpaperOptions(clickedPhoto.src.portrait)
-        }
+        photoAdapter = PhotoAdapter(
+
+            favoritePhotos = favoriteList,
+            onItemClick = { clickedPhoto ->
+                showWallpaperOptions(clickedPhoto.src.portrait)
+            },
+            onFavoriteClick = { photo ->
+                // Handle favorite toggle here, e.g. add or remove from favorites
+                Toast.makeText(requireContext(), "Favorite clicked: ${photo.id}", Toast.LENGTH_SHORT).show()
+            }
+        )
     }
 
     private fun setupRecyclerViews() {

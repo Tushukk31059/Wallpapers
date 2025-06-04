@@ -3,7 +3,10 @@
     <style name="Base.Theme.Wallpapers" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="android:textViewStyle">@style/CustomTextView</item>
     </style>
-
+<style name="CustomTextView" parent="Widget.AppCompat.TextView">
+    <item name="android:textColor">@color/dark_blue</item>
+</style>
     <style name="Theme.Wallpapers" parent="Base.Theme.Wallpapers" />
 </resources>

@@ -1,7 +1,10 @@
 package com.tushar.wallpapers.model
 
+import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class Photo(
     val id: Int,
     val width: Int,
@@ -10,8 +13,9 @@ data class Photo(
     val photographer: String,
     @SerializedName("src")
     val src: Src
-)
+) : Parcelable
 
+@Parcelize
 data class Src(
     val original: String,
     val large2x: String,
@@ -21,4 +25,4 @@ data class Src(
     val portrait: String,
     val landscape: String,
     val tiny: String
-)
+) : Parcelable

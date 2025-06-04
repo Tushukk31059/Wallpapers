@@ -7,13 +7,16 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.tushar.wallpapers.PreviewAct
 import com.tushar.wallpapers.R
-import com.tushar.wallpapers.WallpaperPreviewActivity
 import com.tushar.wallpapers.databinding.ItemWallpaperBinding
 import com.tushar.wallpapers.model.Photo
 
 class PhotoAdapter(
-    private val onItemClick: (Photo) -> Unit
+
+    private val favoritePhotos: MutableList<Photo>,
+    private val onItemClick: (Photo) -> Unit,
+    private val onFavoriteClick: (Photo) -> Unit
 ) : ListAdapter<Photo, PhotoAdapter.PhotoViewHolder>(PhotoDiffCallback()) {
 
     inner class PhotoViewHolder(val binding: ItemWallpaperBinding) :
@@ -36,12 +39,28 @@ class PhotoAdapter(
             .into(holder.binding.wallpaperImage)
 
         // In your PhotoAdapter's onBindViewHolder:
-        holder.itemView.setOnClickListener {
-            val intent = Intent(holder.itemView.context, WallpaperPreviewActivity::class.java).apply {
+        holder.binding.wallpaperImage.setOnClickListener {
+            val intent = Intent(holder.itemView.context, PreviewAct::class.java).apply {
                 putExtra("image_url", photo.src.portrait)
             }
             holder.itemView.context.startActivity(intent)
         }
+        holder.binding.favoriteButton.setImageResource(
+            if (favoritePhotos.contains(photo)) R.drawable.star_blue else R.drawable.star_black
+        )
+
+        holder.binding.favoriteButton.setOnClickListener {
+            if (favoritePhotos.contains(photo)) {
+                favoritePhotos.remove(photo)
+                holder.binding.favoriteButton.setImageResource(R.drawable.star_black)
+            } else {
+                favoritePhotos.add(photo)
+                holder.binding.favoriteButton.setImageResource(R.drawable.star_blue)
+            }
+            onFavoriteClick(photo) // Optional: Notify outside if needed
+        }
+
+
     }
 
     class PhotoDiffCallback : DiffUtil.ItemCallback<Photo>() {

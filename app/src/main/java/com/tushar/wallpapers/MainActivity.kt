@@ -1,6 +1,7 @@
 package com.tushar.wallpapers
 
 import android.app.WallpaperManager
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -16,6 +17,7 @@ import com.bumptech.glide.Glide
 import com.tushar.wallpapers.adapter.CategoryAdapter
 import com.tushar.wallpapers.adapter.PhotoAdapter
 import com.tushar.wallpapers.databinding.ActivityMainBinding
+import com.tushar.wallpapers.model.Photo
 import com.tushar.wallpapers.viewmodel.WallpaperViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,9 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: WallpaperViewModel by viewModels()
     private lateinit var photoAdapter: PhotoAdapter
     private lateinit var categoryAdapter: CategoryAdapter
+
+    // Favorite list stored in memory
+    private val favoriteList = mutableListOf<Photo>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
@@ -43,8 +48,10 @@ class MainActivity : AppCompatActivity() {
 
         setupAdapters()
         setupObservers()
+        setupClickListeners()
+
         viewModel.loadCategories()
-        viewModel.fetchWallpapers("nature") // Default category
+        viewModel.fetchWallpapers("nature")
     }
 
     private fun setupAdapters() {
@@ -52,9 +59,24 @@ class MainActivity : AppCompatActivity() {
             viewModel.fetchWallpapers(category.name)
         }
 
-        photoAdapter = PhotoAdapter { photo ->
-            setWallpaperFromUrl(photo.src.portrait)
-        }
+        photoAdapter = PhotoAdapter(
+            favoritePhotos = favoriteList, // pass favoriteList here
+            onItemClick = { photo ->
+                setWallpaperFromUrl(photo.src.portrait)
+            },
+            onFavoriteClick = { photo ->
+                if (favoriteList.contains(photo)) {
+                    favoriteList.remove(photo)
+                    println("edrr $favoriteList")
+                    Toast.makeText(this, "Removed from favorites", Toast.LENGTH_SHORT).show()
+                } else {
+                    favoriteList.add(photo)
+                    Toast.makeText(this, "Added to favorites", Toast.LENGTH_SHORT).show()
+                }
+
+                photoAdapter.notifyDataSetChanged() // Refresh icons
+            }
+        )
 
         binding.categoryRecyclerView.apply {
             layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
@@ -84,6 +106,14 @@ class MainActivity : AppCompatActivity() {
             if (!message.isNullOrEmpty()) {
                 Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun setupClickListeners() {
+        binding.menu.setOnClickListener {
+            val intent = Intent(this, FavouriteActivity::class.java)
+            intent.putParcelableArrayListExtra("favorites", ArrayList(favoriteList))
+            startActivity(intent)
         }
     }
 
