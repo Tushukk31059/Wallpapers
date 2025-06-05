@@ -1,19 +1,31 @@
 package com.tushar.wallpapers.model
 
 import android.os.Parcelable
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
+@Entity(tableName = "favorites")
 data class Photo(
-    val id: Int,
+    @PrimaryKey val id: Int,
     val width: Int,
     val height: Int,
     val url: String,
     val photographer: String,
     @SerializedName("src")
-    val src: Src
-) : Parcelable
+    @Embedded(prefix = "src") val src: Src
+) : Parcelable{
+    override fun equals(other: Any?): Boolean {
+        return other is Photo && other.id==this.id
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+}
 
 @Parcelize
 data class Src(
@@ -26,3 +38,4 @@ data class Src(
     val landscape: String,
     val tiny: String
 ) : Parcelable
+

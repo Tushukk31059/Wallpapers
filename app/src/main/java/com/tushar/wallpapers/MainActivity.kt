@@ -1,6 +1,5 @@
 package com.tushar.wallpapers
 
-import android.app.WallpaperManager
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -11,18 +10,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
 import com.tushar.wallpapers.adapter.CategoryAdapter
 import com.tushar.wallpapers.adapter.PhotoAdapter
 import com.tushar.wallpapers.databinding.ActivityMainBinding
 import com.tushar.wallpapers.model.Photo
+import com.tushar.wallpapers.model.WallpaperDatabase
 import com.tushar.wallpapers.viewmodel.WallpaperViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -59,30 +56,12 @@ class MainActivity : AppCompatActivity() {
             viewModel.fetchWallpapers(category.name)
         }
 
-        photoAdapter = PhotoAdapter(
-            favoritePhotos = favoriteList, // pass favoriteList here
-            onItemClick = { photo ->
-                setWallpaperFromUrl(photo.src.portrait)
-            },
-            onFavoriteClick = { photo ->
-                if (favoriteList.contains(photo)) {
-                    favoriteList.remove(photo)
-                    println("edrr $favoriteList")
-                    Toast.makeText(this, "Removed from favorites", Toast.LENGTH_SHORT).show()
-                } else {
-                    favoriteList.add(photo)
-                    Toast.makeText(this, "Added to favorites", Toast.LENGTH_SHORT).show()
-                }
-
-                photoAdapter.notifyDataSetChanged() // Refresh icons
-            }
-        )
-
         binding.categoryRecyclerView.apply {
-            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            layoutManager =
+                LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
             adapter = categoryAdapter
         }
-
+        photoAdapter = PhotoAdapter(this,viewModel)
         binding.wallpaperRecyclerView.apply {
             layoutManager = GridLayoutManager(this@MainActivity, 2)
             adapter = photoAdapter
@@ -96,12 +75,15 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.wallpapers.observe(this) { photos ->
             photoAdapter.submitList(photos)
+            photoAdapter.setFavorites(viewModel.allFavorites.value ?: emptyList())
         }
-
+        viewModel.allFavorites.observe(this) { favoriteList ->
+            photoAdapter.setFavorites(favoriteList)
+            photoAdapter.notifyDataSetChanged()
+        }
         viewModel.isLoading.observe(this) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
-
         viewModel.errorMessage.observe(this) { message ->
             if (!message.isNullOrEmpty()) {
                 Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
@@ -114,29 +96,6 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, FavouriteActivity::class.java)
             intent.putParcelableArrayListExtra("favorites", ArrayList(favoriteList))
             startActivity(intent)
-        }
-    }
-
-    private fun setWallpaperFromUrl(imageUrl: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val bitmap = Glide.with(this@MainActivity)
-                    .asBitmap()
-                    .load(imageUrl)
-                    .submit()
-                    .get()
-
-                val wallpaperManager = WallpaperManager.getInstance(applicationContext)
-                wallpaperManager.setBitmap(bitmap)
-
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Wallpaper Set!", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Failed to set wallpaper", Toast.LENGTH_SHORT).show()
-                }
-            }
         }
     }
 }

@@ -1,16 +1,21 @@
 package com.tushar.wallpapers.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+
 import androidx.lifecycle.viewModelScope
-import com.tushar.wallpapers.api.ApiUtilities
+
 import com.tushar.wallpapers.api.RetrofitInstance
 import com.tushar.wallpapers.model.Category
 import com.tushar.wallpapers.model.Photo
+import com.tushar.wallpapers.model.WallpaperDatabase
+import com.tushar.wallpapers.repository.WallpaperRepository
 import kotlinx.coroutines.launch
 
-class WallpaperViewModel : ViewModel() {
+class WallpaperViewModel(application: Application) : AndroidViewModel(application){
+
     private val _categories = MutableLiveData<List<Category>>()
     val categories: LiveData<List<Category>> get() = _categories
 
@@ -22,6 +27,15 @@ class WallpaperViewModel : ViewModel() {
 
     private val _errorMessage = MutableLiveData<String>()
     val errorMessage: LiveData<String> get() = _errorMessage
+
+    private val repository: WallpaperRepository
+    val allFavorites: LiveData<List<Photo>>
+
+    init {
+        val photoDao = WallpaperDatabase.getDatabase(application).photoDao()
+        repository = WallpaperRepository(photoDao)
+        allFavorites = repository.allFavorites
+    }
 
     fun loadCategories() {
         _categories.value = listOf(
@@ -46,6 +60,22 @@ class WallpaperViewModel : ViewModel() {
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+    // Room: Add to Favorites
+    fun addToFavorites(photo: Photo) = viewModelScope.launch {
+        repository.addToFavorites(photo)
+    }
+
+    // Room: Remove from Favorites
+    fun removeFromFavorites(photo: Photo) = viewModelScope.launch {
+        repository.removeFromFavorites(photo)
+    }
+    // Room: Check if already favorite
+    fun isFavorite(id: Int, callback: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.isFavorite(id)
+            callback(result)
         }
     }
 }

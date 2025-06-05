@@ -56,17 +56,7 @@ class WallpaperFragment : Fragment() {
             viewModel.fetchWallpapers(category.name)
         }
 
-        photoAdapter = PhotoAdapter(
 
-            favoritePhotos = favoriteList,
-            onItemClick = { clickedPhoto ->
-                showWallpaperOptions(clickedPhoto.src.portrait)
-            },
-            onFavoriteClick = { photo ->
-                // Handle favorite toggle here, e.g. add or remove from favorites
-                Toast.makeText(requireContext(), "Favorite clicked: ${photo.id}", Toast.LENGTH_SHORT).show()
-            }
-        )
     }
 
     private fun setupRecyclerViews() {
