@@ -119,6 +119,7 @@
                 tools:layout_editor_absoluteY="0dp">
 
                 <ImageView
+                    android:id="@+id/imgFav"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"

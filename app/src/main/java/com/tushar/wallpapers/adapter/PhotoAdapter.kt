@@ -49,6 +49,7 @@ class PhotoAdapter(
         holder.binding.wallpaperImage.setOnClickListener {
             val intent = Intent(holder.itemView.context, PreviewAct::class.java).apply {
                 putExtra("image_url", photo.src.portrait)
+                putExtra("photo_data", photo)
             }
             holder.itemView.context.startActivity(intent)
         }

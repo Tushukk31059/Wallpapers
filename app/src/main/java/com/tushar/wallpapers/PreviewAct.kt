@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.app.WallpaperManager
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -23,11 +24,14 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.tushar.wallpapers.databinding.ActivityPreviewBinding
+import com.tushar.wallpapers.model.Photo
+import com.tushar.wallpapers.viewmodel.WallpaperViewModel
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,16 +43,21 @@ class PreviewAct : AppCompatActivity() {
     private lateinit var binding: ActivityPreviewBinding
     private var currentBitmap: Bitmap? = null
     private var isLoading = false
+    private lateinit var viewModel: WallpaperViewModel
+    private val favoriteList = mutableListOf<Photo>()
+    private var currentPhoto: Photo? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         window.decorView.systemUiVisibility =
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
                     View.SYSTEM_UI_FLAG_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-        WindowCompat.getInsetsController(window,window.decorView).isAppearanceLightNavigationBars =true
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars =
+            true
 
 // Optional: make sure status bar and navigation bar are transparent
         window.statusBarColor = android.graphics.Color.TRANSPARENT
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         super.onCreate(savedInstanceState)
@@ -61,24 +70,34 @@ class PreviewAct : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        binding.backBtn.setOnClickListener {
-            if (!isLoading) finish()
+
+        //view holder
+        viewModel = ViewModelProvider(
+            this,
+            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+        )[WallpaperViewModel::class.java]
+        currentPhoto = intent.getParcelableExtra("photo_data")
+
+        //observer
+        viewModel.allFavorites.observe(this) { favorites ->
+            currentPhoto?.let { photo ->
+                val isFav = favorites.any { it.id == photo.id }
+                binding.imgFav.setImageResource(
+                    if (isFav) R.drawable.star_blue else R.drawable.star
+                )
+            }
         }
+
+        //listeners
+        setupListeners()
 
         val imageUrl = intent.getStringExtra("image_url") ?: run {
             finish()
             return
         }
-
         loadImage(imageUrl)
-        setupWallpaperButton()
-        binding.downloadButton.setOnClickListener{
-            currentBitmap?.let { it1 -> saveImage(this, it1,"Wallpaper") }
-            Toast.makeText(this,"Wallpaper Saved Successfully",Toast.LENGTH_SHORT).show()
-        }
-        binding.favoriteButton.setOnClickListener {
 
-        }
+
     }
 
 
@@ -97,8 +116,10 @@ class PreviewAct : AppCompatActivity() {
 
                 override fun onLoadFailed(errorDrawable: Drawable?) {
                     binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this@PreviewAct,
-                        "Failed to load image", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@PreviewAct,
+                        "Failed to load image", Toast.LENGTH_SHORT
+                    ).show()
                 }
 
                 override fun onLoadCleared(placeholder: Drawable?) {
@@ -107,56 +128,91 @@ class PreviewAct : AppCompatActivity() {
             })
     }
 
-    private fun setupWallpaperButton() {
-        binding.setWallpaperBtn.setOnClickListener {
-            showWallpaperDialog()
+
+    private fun saveImage(context: Context, bitmap: Bitmap, fileName: String): Uri? {
+        val fileName = "$fileName.jpg"
+        val fileOutputStream: OutputStream?
+        val imageUri: Uri?
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Images.Media.MIME_TYPE, "images/jpg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            put(MediaStore.Images.Media.IS_PENDING, 1)
         }
-    }
-    private fun saveImage(context:Context, bitmap: Bitmap,fileName:String):Uri?{
-        val fileName="$fileName.jpg"
-        val fileOutputStream:OutputStream?
-        val imageUri:Uri?
-        val contentValues=ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME,fileName)
-            put(MediaStore.Images.Media.MIME_TYPE,"images/jpg")
-            put(MediaStore.Images.Media.RELATIVE_PATH,Environment.DIRECTORY_PICTURES)
-            put(MediaStore.Images.Media.IS_PENDING,1)
-        }
-        val contentResolver=context.contentResolver
-        imageUri=contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,contentValues)
-        if (imageUri != null){
-            fileOutputStream=contentResolver.openOutputStream(imageUri)
+        val contentResolver = context.contentResolver
+        imageUri =
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        if (imageUri != null) {
+            fileOutputStream = contentResolver.openOutputStream(imageUri)
             if (fileOutputStream != null) {
-                bitmap.compress(Bitmap.CompressFormat.JPEG,100,fileOutputStream)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream)
             }
             fileOutputStream?.flush()
             fileOutputStream?.close()
             contentValues.clear()
-            contentValues.put(MediaStore.Images.Media.IS_PENDING,0)
-            contentResolver.update(imageUri,contentValues,null,null)
+            contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+            contentResolver.update(imageUri, contentValues, null, null)
         }
         return imageUri
 
 
     }
 
-    private fun setAsWallpaper(bitmap: Bitmap,flag:Int) {
+    private fun setupListeners() {
+        binding.backBtn.setOnClickListener {
+            if (!isLoading){
+            val intent = Intent(this, MainActivity::class.java)
+            intent.putParcelableArrayListExtra("favorites", ArrayList(favoriteList))
+            intent.putExtra("selected_id", R.id.nav_home)
+            startActivity(intent)
+                finish()
+        }
+        }
+
+        binding.setWallpaperBtn.setOnClickListener {
+            showWallpaperDialog()
+        }
+        binding.favoriteButton.setOnClickListener {
+            currentPhoto?.let { photo ->
+                val isFavorite = viewModel.allFavorites.value?.any { it.id == photo.id } == true
+                if (isFavorite) {
+                    viewModel.removeFromFavorites(photo)
+                    Toast.makeText(this, "Removed from Favorites", Toast.LENGTH_SHORT).show()
+                    binding.imgFav.setImageResource(R.drawable.star)
+                } else {
+                    viewModel.addToFavorites(photo)
+                    Toast.makeText(this, "Added to Favorites", Toast.LENGTH_SHORT).show()
+                    binding.imgFav.setImageResource(R.drawable.star_blue)
+                }
+            }
+        }
+        binding.downloadButton.setOnClickListener {
+            currentBitmap?.let { it1 -> saveImage(this, it1, "Wallpaper") }
+            Toast.makeText(this, "Wallpaper Saved Successfully", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setAsWallpaper(bitmap: Bitmap, flag: Int) {
         isLoading = true
         binding.setWallpaperBtn.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                WallpaperManager.getInstance(this@PreviewAct).setBitmap(bitmap,null,true,flag)
+                WallpaperManager.getInstance(this@PreviewAct).setBitmap(bitmap, null, true, flag)
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@PreviewAct,
-                        "Wallpaper set successfully!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@PreviewAct,
+                        "Wallpaper applied successfully!", Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@PreviewAct,
-                        "Failed to set wallpaper: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@PreviewAct,
+                        "Failed to set wallpaper: ${e.message}", Toast.LENGTH_SHORT
+                    ).show()
                 }
             } finally {
                 withContext(Dispatchers.Main) {
@@ -167,13 +223,12 @@ class PreviewAct : AppCompatActivity() {
             }
         }
 
-}
+    }
 
     private fun showWallpaperDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_set_wallpaper, null)
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(dialogView)
-
 
 
         val homeLayout = dialogView.findViewById<LinearLayout>(R.id.homeLayout)
@@ -207,7 +262,7 @@ class PreviewAct : AppCompatActivity() {
             if (isLoading) return@setOnClickListener
 
             currentBitmap?.let { bitmap ->
-                setAsWallpaper(bitmap,WallpaperManager.FLAG_LOCK)
+                setAsWallpaper(bitmap, WallpaperManager.FLAG_LOCK)
             } ?: run {
                 Toast.makeText(this, "Image not loaded yet", Toast.LENGTH_SHORT).show()
             }
@@ -230,6 +285,7 @@ class PreviewAct : AppCompatActivity() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         dialog.show()
     }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
