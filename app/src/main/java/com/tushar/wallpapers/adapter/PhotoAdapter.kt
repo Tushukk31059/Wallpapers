@@ -21,7 +21,8 @@ class PhotoAdapter(
 
 ) : ListAdapter<Photo, PhotoAdapter.PhotoViewHolder>(PhotoDiffCallback()) {
 
-    private val favoritePhotos = mutableListOf<Photo>()
+    private var favoritePhotos: List<Photo> = emptyList()
+
 
     inner class PhotoViewHolder(val binding: ItemWallpaperBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -53,7 +54,8 @@ class PhotoAdapter(
         }
 
         // Check if current photo is in favorites
-        val isFavorite = favoritePhotos.any { it.id == photo.id }
+        val isFavorite = favoritePhotos.any { fav -> fav.id == photo.id }
+
 
         // Set the favorite button icon accordingly
         holder.binding.favoriteButton.setImageResource(
@@ -72,14 +74,14 @@ class PhotoAdapter(
             }
 
             // Notify adapter and invoke callback
-            notifyItemChanged(holder.adapterPosition)
+            submitList(currentList.toList()) // force DiffUtil re-evaluation
+
 
         }
     }
 
     fun setFavorites(favorites: List<Photo>) {
-        favoritePhotos.clear()
-        favoritePhotos.addAll(favorites)
+        favoritePhotos = favorites
         notifyDataSetChanged()
     }
 

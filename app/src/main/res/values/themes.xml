@@ -4,7 +4,10 @@
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
         <item name="android:textViewStyle">@style/CustomTextView</item>
+        <item name="android:navigationBarColor" >@color/grey</item>
+        <item name="android:windowSplashScreenBackground" tools:ignore="NewApi">@color/grey</item>
     </style>
+
 <style name="CustomTextView" parent="Widget.AppCompat.TextView">
     <item name="android:textColor">@color/dark_blue</item>
 </style>

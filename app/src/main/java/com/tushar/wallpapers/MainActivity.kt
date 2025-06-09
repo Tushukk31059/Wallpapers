@@ -4,10 +4,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
@@ -36,19 +39,32 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
+window.navigationBarColor=ContextCompat.getColor(this,R.color.grey)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        val selectedId = intent.getIntExtra("selected_id", R.id.nav_home)
 
+        binding.navView.post {
+            binding.navView.menu.setGroupCheckable(0, true, true)
+            binding.navView.setCheckedItem(selectedId)
+            binding.navView.menu.findItem(selectedId)?.isChecked = true
+        }
         setupAdapters()
         setupObservers()
         setupClickListeners()
 
         viewModel.loadCategories()
         viewModel.fetchWallpapers("nature")
+
+        onBackPressedDispatcher.addCallback(this) {
+            if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                binding.drawerLayout.closeDrawer(GravityCompat.START)
+            } else {
+                finishAffinity()
+            }}
     }
 
     private fun setupAdapters() {
@@ -93,9 +109,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.menu.setOnClickListener {
-            val intent = Intent(this, FavouriteActivity::class.java)
-            intent.putParcelableArrayListExtra("favorites", ArrayList(favoriteList))
-            startActivity(intent)
+            binding.drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        binding.navView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+
+                R.id.nav_favourites -> {
+                    val intent = Intent(this, FavouriteActivity::class.java)
+                    intent.putParcelableArrayListExtra("favorites", ArrayList(favoriteList))
+                    startActivity(intent)
+                    finish()
+                }
+                R.id.nav_about -> {
+                    val intent= Intent(this,AboutUsAct::class.java)
+                    intent.putParcelableArrayListExtra("favorites", ArrayList(favoriteList))
+                    intent.putExtra("fav_selected",R.id.nav_favourites)
+                    startActivity(intent)
+
+                }
+            }
+            binding.drawerLayout.closeDrawer(GravityCompat.START)
+            true
         }
     }
 }

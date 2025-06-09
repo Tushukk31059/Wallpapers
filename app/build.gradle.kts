@@ -67,6 +67,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
+    implementation("com.airbnb.android:lottie:3.4.0")
+
 
 
 }
